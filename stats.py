@@ -10,7 +10,7 @@ import datetime
 your_path = 'D:\Program Files\MultiMC\instances'
 if not os.path.exists('instgroups.json'):
   if not os.path.exists(your_path):
-    your_path = str(input('Please enter your MultiMC directory. It should be like: D:\Program Files\MultiMC\instances'))
+    your_path = str(input('Please enter MultiMC directory, which should be like D:\Program Files\MultiMC\instances. Enter: '))
     os.chdir(your_path)
   else:
     os.chdir(your_path)
