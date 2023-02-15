@@ -8,7 +8,7 @@ Notes:
 
 ## What does it do?
 
-It collects speedrunigt records of your completed runs, and output to a CSV file under MultiMC/instances.
+It collects speedrunigt records of your completed runs, and output them to a CSV file under MultiMC/instances.
 
 ## Todos
 
