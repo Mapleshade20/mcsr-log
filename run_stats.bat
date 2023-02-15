@@ -1,0 +1,2 @@
+python stats.py
+PAUSE
