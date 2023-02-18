@@ -8,9 +8,10 @@ import logging
 import datetime
 
 your_path = 'D:\Program Files\MultiMC\instances'
+
 if not os.path.exists('instgroups.json'):
   if not os.path.exists(your_path):
-    your_path = str(input('Please enter MultiMC directory, which should be like D:\Program Files\MultiMC\instances. Enter: '))
+    your_path = str(input('Please enter MultiMC directory, which should be like D:\Program Files\MultiMC\instances. (You may also edit stats.py line 10)\nEnter: '))
     os.chdir(your_path)
   else:
     os.chdir(your_path)
@@ -19,8 +20,9 @@ logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', filename='
 
 logging.info(f'Running at {os.getcwd()}')
 
-if not os.path.exists("./stats_last_run.txt"):
-  logging.info("First run.")
+if not os.path.exists("stats_last_run.txt"):
+  logging.info("First time running this script.")
+
 # 定义一个函数，判断一个文件夹是否是新创建的
 def is_new_folder(folder):
 
@@ -32,8 +34,13 @@ def is_new_folder(folder):
     return True
   else:
     with open("./stats_last_run.txt", "r") as f:
-      last_run_time = float(str(f.read()))
-      logging.debug(f'Save \'{folder}\' detected. Create time: {folder_ctime}. Last stats: {last_run_time}.')
+      try:
+        last_run_time = float(str(f.read()))
+      except Exception:
+        logging.error('Unable to read stats_last_run.txt.')
+        print('Please delete stats_last_run.txt and run again.')
+        exit()
+      logging.debug(f'Save \'{folder}\' detected. Create time: {datetime.datetime.fromtimestamp(folder_ctime)}. Last stats: {datetime.datetime.fromtimestamp(last_run_time)}.')
     # 如果文件夹的创建时间大于上次运行程序的时间，返回True，否则返回False
     return folder_ctime > last_run_time
 
@@ -51,6 +58,42 @@ def convert_millis(millis):
   # 返回一个字符串，格式为"分:秒"
   return result
 
+# 定义一个函数，用来计算一个片段的时间
+def length(total: int, stamp2: str, dataframe: pd.DataFrame, rename2: str):
+  stamp_seconds = int(dataframe[stamp2].igt / 1000)
+  # fortress first?
+  if total == -1:
+    print('In one save you entered fortress before bastion, so your fight_blaze time cannot be calculated. It\'s marked as -1.')
+    length = -1
+  elif stamp_seconds < total:
+    length = stamp_seconds - total + dataframe['goto_bastion'] # fort - neth = fort - bas + (bas - neth)
+    dataframe['goto_bastion'] = total - stamp_seconds
+    stamp_seconds = -1
+  else:
+    length = stamp_seconds - total
+  dataframe.drop(stamp2, axis=1)
+  dataframe[rename2] = length
+  return dataframe, stamp_seconds
+
+
+# ------
+# VERSION FATAL
+# ------
+
+if os.path.exists('stats_output.csv'):
+  version_check = pd.read_csv('stats_output.csv')
+  try:
+    values = version_check.loc[:, 'goto_bastion']
+  except Exception:
+    print('Your CSV is in older version. Please delete it along with \'stats_last_run.txt\' and run again.')
+    exit()
+
+# ------
+# READ
+# ------
+
+data = None
+
 for instance in os.listdir("."):
   # 只打开Instance *
   if not instance.startswith('Instance'):
@@ -60,7 +103,7 @@ for instance in os.listdir("."):
   # 遍历当前目录下的所有文件夹
   for save in os.listdir(f"./{instance}/.minecraft/saves"):
     logging.debug(f"Start checking /{instance}/.minecraft/saves/{save}")
-    if not save.startswith("Random Speedrun"):
+    if not save.startswith("Random Speedrun") and not save.startswith("Set Speedrun"):
       continue
 
     # 判断是否是新创建的save，如果不是，检查下一个save
@@ -91,6 +134,14 @@ for instance in os.listdir("."):
     df = df.drop(index='rta')
     # logging.debug(df)
 
+    df, temp = length(0, 'enter_nether', df, 'enter_nether')
+    df, temp = length(temp, 'enter_bastion', df, 'goto_bastion')
+    df, temp = length(temp, 'enter_fortress', df, 'goto_fortress')
+    df, temp = length(temp, 'nether_travel', df, 'fight_blaze')
+    df, temp = length(temp, 'enter_stronghold', df, 'eye_spy')
+    df, temp = length(temp, 'enter_end', df, 'locate_room')
+    df, temp = length(temp, 'kill_ender_dragon', df, 'kill_dragon')
+
     # date和igt转换。date除以1000，因为Python的时间戳是以秒为单位的
     # date是以毫秒为单位的时间戳，表示从1970年1月1日0时0分0秒（UTC）开始到某个时间点的毫秒数
     date_converted = datetime.datetime.fromtimestamp(record["date"] / 1000).strftime("%Y-%m-%d %H:%M")
@@ -105,39 +156,37 @@ for instance in os.listdir("."):
     df["date_converted"] = date_converted
     df["final_igt_converted"] = final_igt_converted
 
-    # # 判断是否有portal_no_2，如没有则补足
-    # columns = df.columns
-    # # 用'in'运算符来判断'portal_no_2'是否在列名列表中
-    # if 'portal_no_2' not in columns:
-    #   # 如果不在，用pandas.DataFrame.assign方法来添加一列'portal_no_2'，并把值设定为'N/A'
+    # 整理列
+    #   如果不在，用pandas.DataFrame.assign方法来添加一列'portal_no_2'，并把值设定为'N/A'
     #   df = df.assign(portal_no_2=-1)
+    # 
     df = df[['category','run_type','final_igt_converted','date_converted','date','final_igt','final_rta','enter_nether',
-             'enter_bastion','enter_fortress','nether_travel','enter_stronghold','enter_end','kill_ender_dragon']]
-
-    # 把数据框对象保存为stats_output.csv文件
-    if not os.path.exists('stats_output.csv'):
-      logging.info('Initiating stats_output.csv')
-      df.to_csv("stats_output.csv", index=False, header=True)
+             'goto_bastion','goto_fortress','fight_blaze','eye_spy','locate_room','kill_dragon']]
+    
+    if data is not None:
+      data = pd.concat([data, df], axis=0, ignore_index=True)
     else:
-      logging.info('Writing into stats_output.csv')
-      df.to_csv("stats_output.csv", mode='a', index=False, header=False)
+      data = df
 
-try:
-  current_time = os.path.getmtime("stats_output.csv")
-  with open("stats_last_run.txt", "w") as f:
-  # 获取当前时间
-    current_time = os.path.getmtime("stats_output.csv")
-    # 写入文件
-    f.write(float(current_time))
-    logging.debug("Recorded running time.")
-except Exception:
-  logging.error('No csv already exists.')
-  with open("stats_last_run.txt", "w") as f:
-  # 获取当前时间
-    current_time = os.path.getmtime("stats_output.csv")
-    # 写入文件
-    f.write(str(float(current_time)))
-    logging.debug("Recorded running time.")
+# 把数据框对象保存为stats_output.csv文件
+if data is None:
+  print('No new runs detected.')
+elif not os.path.exists('stats_output.csv'):
+  logging.info('Initiating stats_output.csv')
+  data.to_csv("stats_output.csv", index=False, header=True)
+else:
+  logging.info('Writing into stats_output.csv')
+  data.to_csv("stats_output.csv", mode='a', index=False, header=False)
 
-logging.info('Run completed.')
+
+# ----------
+# TIME WRITE
+# ----------
+# 获取当前时间
+current_time = datetime.datetime.now().timestamp()
+with open("stats_last_run.txt", "w") as f:
+  # 写入文件
+  f.write(str(float(current_time)))
+  logging.debug(f"Execute time: {datetime.datetime.now()}, {current_time}")
+
 print("Completed.")
