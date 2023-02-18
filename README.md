@@ -19,5 +19,7 @@ It collects speedrunigt records of your completed runs, and output to a CSV file
 - [x] Fix negative time in case you enter fortress first
 - [ ] Make use of `igt_advancement.log`
 - [ ] Add compatability for AA-tool
-- [ ] Have a detailed personal runs UI, which compares every attempt of yours, in each section.
+- [ ] Have a detailed personal runs UI, which compares every attempt of yours, in each section
 - [ ] Record bastion type, travel speed, pearls/wool/obsidian count?
+- [ ] Identify whether 'is_completed' is done via cheat(creative mode), because this leads to order error
+- [ ] Rewrite order handling / delta calculating method

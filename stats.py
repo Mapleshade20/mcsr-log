@@ -54,11 +54,12 @@ def convert_millis(millis):
   hour, minute, second = delta_str.split(':')
   second = second[:6]
   # 用format方法来把分钟，秒和毫秒拼接成你想要的格式，即'分:秒.毫秒'
-  result = f'{minute}:{second}'
+  result = f'{hour}:{minute}:{second}'
   # 返回一个字符串，格式为"分:秒"
   return result
 
 # 定义一个函数，用来计算一个片段的时间
+# THIS FUNCTION SHALL BE REDEFINED IN FUTURE VERSIONS
 def length(total: int, stamp2: str, dataframe: pd.DataFrame, rename2: str):
   stamp_seconds = int(dataframe[stamp2].igt / 1000)
   # fortress first?
@@ -66,9 +67,12 @@ def length(total: int, stamp2: str, dataframe: pd.DataFrame, rename2: str):
     print('In one save you entered fortress before bastion, so your fight_blaze time cannot be calculated. It\'s marked as -1.')
     length = -1
   elif stamp_seconds < total:
-    length = stamp_seconds - total + dataframe['goto_bastion'] # fort - neth = fort - bas + (bas - neth)
-    dataframe['goto_bastion'] = total - stamp_seconds
-    stamp_seconds = -1
+    try: # some very weird enter order (SSG maybe) may lead to error
+      length = stamp_seconds - total + dataframe['goto_bastion'] # fort - neth = fort - bas + (bas - neth)
+      dataframe['goto_bastion'] = total - stamp_seconds
+      stamp_seconds = -1
+    except KeyError:
+      length = -1
   else:
     length = stamp_seconds - total
   dataframe.drop(stamp2, axis=1)
@@ -102,6 +106,7 @@ for instance in os.listdir("."):
 
   # 遍历当前目录下的所有文件夹
   for save in os.listdir(f"./{instance}/.minecraft/saves"):
+    save_path = f"/{instance}/.../{save}"
     logging.debug(f"Start checking /{instance}/.minecraft/saves/{save}")
     if not save.startswith("Random Speedrun") and not save.startswith("Set Speedrun"):
       continue
@@ -155,13 +160,14 @@ for instance in os.listdir("."):
     df["date"] = record["date"]
     df["date_converted"] = date_converted
     df["final_igt_converted"] = final_igt_converted
+    df["save_path"] = save_path
 
     # 整理列
     #   如果不在，用pandas.DataFrame.assign方法来添加一列'portal_no_2'，并把值设定为'N/A'
     #   df = df.assign(portal_no_2=-1)
     # 
     df = df[['category','run_type','final_igt_converted','date_converted','date','final_igt','final_rta','enter_nether',
-             'goto_bastion','goto_fortress','fight_blaze','eye_spy','locate_room','kill_dragon']]
+             'goto_bastion','goto_fortress','fight_blaze','eye_spy','locate_room','kill_dragon','save_path']]
     
     if data is not None:
       data = pd.concat([data, df], axis=0, ignore_index=True)
@@ -172,9 +178,11 @@ for instance in os.listdir("."):
 if data is None:
   print('No new runs detected.')
 elif not os.path.exists('stats_output.csv'):
+  data.sort_values(by='date')
   logging.info('Initiating stats_output.csv')
   data.to_csv("stats_output.csv", index=False, header=True)
 else:
+  data.sort_values(by='date')
   logging.info('Writing into stats_output.csv')
   data.to_csv("stats_output.csv", mode='a', index=False, header=False)
 
