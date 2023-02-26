@@ -8,6 +8,7 @@ import logging
 import datetime
 
 your_path = 'D:\Program Files\MultiMC\instances'
+read_incomplete = True
 
 if not os.path.exists('instgroups.json'):
   if not os.path.exists(your_path):
