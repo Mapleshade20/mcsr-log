@@ -7,21 +7,32 @@ import pandas as pd
 import logging
 import datetime
 
-your_path = 'D:\Program Files\MultiMC\instances'
-
-if not os.path.exists('instgroups.json'):
-  if not os.path.exists(your_path):
-    your_path = str(input('Please enter MultiMC directory, which should be like D:\Program Files\MultiMC\instances. (You may also edit stats.py line 10)\nEnter: '))
-    os.chdir(your_path)
+# 读取config.json
+try:
+  with open('./config.json', "r") as f:
+    config = json.load(f)
+  your_path = config['path']
+  read_incomplete = config['read_incomplete']
+  ignore_lastrun = config['ignore_lastrun']
+  version = config['version']
+except Exception:
+  print('Cannot find config.json. It\'s recommended to run me under my own directory.')
+  if not os.path.exists('instgroups.json'):
+    your_path = str(input('Please enter MultiMC directory. Should be like D:\Program Files\MultiMC\instances (edit config.json is recommended)\nEnter: '))
   else:
-    os.chdir(your_path)
+    your_path = '.'
+  read_incomplete = False
+  version = None
+os.chdir(your_path)
 
 logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', filename='stats.log', filemode='a', encoding='utf-8', level=logging.DEBUG)
-
 logging.info(f'Running at {os.getcwd()}')
-
+if read_incomplete:
+  logging.info("Will read incomplete saves!!!")
+else: 
+  logging.info("Will only read completed saves.")
 if not os.path.exists("stats_last_run.txt"):
-  logging.info("First time running this script.")
+  logging.info("No stats_last_run.txt")
 
 # 定义一个函数，判断一个文件夹是否是新创建的
 def is_new_folder(folder):
@@ -59,7 +70,7 @@ def convert_millis(millis):
   return result
 
 # 定义一个函数，用来计算一个片段的时间
-# THIS FUNCTION SHALL BE REDEFINED IN FUTURE VERSIONS
+# THIS FUNCTION SHALL BE MODIFIED IN FUTURE VERSIONS
 def length(total: int, stamp2: str, dataframe: pd.DataFrame, rename2: str):
   stamp_seconds = int(dataframe[stamp2].igt / 1000)
   # fortress first?
@@ -75,13 +86,13 @@ def length(total: int, stamp2: str, dataframe: pd.DataFrame, rename2: str):
       length = -1
   else:
     length = stamp_seconds - total
-  dataframe.drop(stamp2, axis=1)
+  dataframe = dataframe.drop(columns=stamp2)
   dataframe[rename2] = length
   return dataframe, stamp_seconds
 
 
 # ------
-# VERSION FATAL
+# VERSION CHECK
 # ------
 
 if os.path.exists('stats_output.csv'):
@@ -89,14 +100,20 @@ if os.path.exists('stats_output.csv'):
   try:
     values = version_check.loc[:, 'goto_bastion']
   except Exception:
-    print('Your CSV is in older version. Please delete it along with \'stats_last_run.txt\' and run again.')
+    print('Your CSV is in an older version. Please delete it along with \'stats_last_run.txt\' and run again.')
     exit()
+print(f'Your script version is {version}')
+
 
 # ------
 # READ
 # ------
 
 data = None
+splits_match = {'enter_nether':'enter_nether', 'enter_bastion':'goto_bastion',
+               'enter_fortress':'bart_n_goto_fort', 'nether_travel':'fight_blaze',
+               'enter_stronghold':'eye_spy', 'enter_end':'locate_room',
+               'kill_ender_dragon':'kill_dragon'}
 
 for instance in os.listdir("."):
   # 只打开Instance *
@@ -112,9 +129,9 @@ for instance in os.listdir("."):
       continue
 
     # 判断是否是新创建的save，如果不是，检查下一个save
-    check_new = is_new_folder(f"./{instance}/.minecraft/saves/{save}")
-    if not check_new:
-      continue
+    if not ignore_lastrun:
+      if not is_new_folder(f"./{instance}/.minecraft/saves/{save}"):
+        continue
 
     # 拼接文件夹名和record.json的路径
     record_path = os.path.join(f"./{instance}/.minecraft/saves", save, "speedrunigt/record.json")
@@ -123,52 +140,102 @@ for instance in os.listdir("."):
     if not os.path.exists(record_path):
       logging.warning(f'Cannot find record in \'{record_path}\'.')
       continue
-
+    
     # 打开record.json文件
     with open(record_path, "r") as f:
       # 读取文件内容并转换为字典
       record = json.load(f)
     
-    # 判断is_completed是否为true，如果不是，检查下一个save
-    if not record["is_completed"]:
-      logging.debug(f"Record \'{save}\' is not completed.")
-      continue
-
-    logging.info(f"/{instance}/.minecraft/saves/{save} matches!")
-    df = pd.DataFrame(record["timelines"]).set_index("name").T
-    df = df.drop(index='rta')
-    # logging.debug(df)
-
-    df, temp = length(0, 'enter_nether', df, 'enter_nether')
-    df, temp = length(temp, 'enter_bastion', df, 'goto_bastion')
-    df, temp = length(temp, 'enter_fortress', df, 'goto_fortress')
-    df, temp = length(temp, 'nether_travel', df, 'fight_blaze')
-    df, temp = length(temp, 'enter_stronghold', df, 'eye_spy')
-    df, temp = length(temp, 'enter_end', df, 'locate_room')
-    df, temp = length(temp, 'kill_ender_dragon', df, 'kill_dragon')
-
-    # date和igt转换。date除以1000，因为Python的时间戳是以秒为单位的
-    # date是以毫秒为单位的时间戳，表示从1970年1月1日0时0分0秒（UTC）开始到某个时间点的毫秒数
-    date_converted = datetime.datetime.fromtimestamp(record["date"] / 1000).strftime("%Y-%m-%d %H:%M")
-    final_igt_converted = convert_millis(record["final_igt"])
-
-    # 把值添加到数据框对象中，作为新的列
-    df["category"] = record["category"]
-    df["run_type"] = record["run_type"]
-    df["final_igt"] = record["final_igt"]
-    df["final_rta"] = record["final_rta"]
-    df["date"] = record["date"]
-    df["date_converted"] = date_converted
-    df["final_igt_converted"] = final_igt_converted
-    df["save_path"] = save_path
-
-    # 整理列
-    #   如果不在，用pandas.DataFrame.assign方法来添加一列'portal_no_2'，并把值设定为'N/A'
-    #   df = df.assign(portal_no_2=-1)
-    # 
-    df = df[['category','run_type','final_igt_converted','date_converted','date','final_igt','final_rta','enter_nether',
-             'goto_bastion','goto_fortress','fight_blaze','eye_spy','locate_room','kill_dragon','save_path']]
+    splits = ['enter_nether', 'enter_bastion', 'enter_fortress',
+            'nether_travel', 'enter_stronghold', 'enter_end', 'kill_ender_dragon']
     
+    # 判断is_completed是否为true
+    if record["is_completed"]:
+
+      logging.info(f"/{instance}/.../{save} matches!")
+      df = pd.DataFrame(record["timelines"]).set_index("name").T
+      df = df.drop(index='rta')
+      # logging.debug(df)
+
+      temp = 0
+      for split in splits:
+        df, temp = length(temp, split, df, splits_match[split])
+
+      # date和igt转换。date除以1000，因为Python的时间戳是以秒为单位的
+      # date是以毫秒为单位的时间戳，表示从1970年1月1日0时0分0秒（UTC）开始到某个时间点的毫秒数
+      date_converted = datetime.datetime.fromtimestamp(record["date"] / 1000).strftime("%Y-%m-%d %H:%M")
+      final_igt_converted = convert_millis(record["final_igt"])
+
+      # 把值添加到数据框对象中，作为新的列
+      df["category"] = record["category"]
+      df["run_type"] = record["run_type"]
+      df["final_igt"] = record["final_igt"]
+      df["final_rta"] = record["final_rta"]
+      df["date"] = record["date"]
+      df["date_converted"] = date_converted
+      df["final_igt_converted"] = final_igt_converted
+      df["save_path"] = save_path
+      df["is_completed"] = record["is_completed"]
+
+      # 整理列
+      #   如果不在，用pandas.DataFrame.assign方法来添加一列'portal_no_2'，并把值设定为'N/A'
+      #   df = df.assign(portal_no_2=-1)
+      # 
+      df = df[['category','run_type','is_completed','final_igt_converted','date_converted','enter_nether',
+              'goto_bastion','bart_n_goto_fort','fight_blaze','eye_spy','locate_room','kill_dragon',
+              'save_path','date','final_igt','final_rta']]
+    
+    elif read_incomplete:
+      if record["timelines"] == []:
+        logging.debug(f"[INCOMPLETE] /{instance}/.../{save} skipped! No timelines.")
+        continue
+      df = pd.DataFrame(record["timelines"]).set_index("name").T
+      df = df.drop(index='rta')
+      if 'enter_stronghold' in df.columns:  # incomplete TARGET
+        logging.info(f"[INCOMPLETE] /{instance}/.../{save} matches!")
+        timelines_incomp = []
+        timelines_incomp.extend(list(df.columns))
+        #print(timelines_incomp)
+        temp = 0
+        splits_dup = splits[:]
+        #print('1\n', splits)
+        for split in splits:
+          if split in timelines_incomp:
+            df, temp = length(temp, split, df, splits_match[split])
+            #print(split, 'is in! \n', df)
+          else:
+            #print(split, 'isnt in! \n', df)
+            break
+          splits_dup.remove(split)
+        for remained in splits_dup:
+          df[splits_match[remained]] = -1
+          #print('2', split, '\n', df)
+        #print('\n\n\n')
+        date_converted = datetime.datetime.fromtimestamp(record["date"] / 1000).strftime("%Y-%m-%d %H:%M")
+        # 把值添加到数据框对象中，作为新的列
+        df["category"] = record["category"]
+        df["run_type"] = record["run_type"]
+        df["final_igt"] = -1
+        df["final_rta"] = -1
+        df["date"] = record["date"]
+        df["date_converted"] = date_converted
+        df["final_igt_converted"] = -1
+        df["save_path"] = save_path
+        df["is_completed"] = record["is_completed"]
+
+        df = df[['category','run_type','is_completed','final_igt_converted','date_converted','enter_nether',
+              'goto_bastion','bart_n_goto_fort','fight_blaze','eye_spy','locate_room','kill_dragon',
+              'save_path','date','final_igt','final_rta']]
+
+      else:
+        logging.debug(f"[INCOMPLETE] /{instance}/.../{save} skipped! No \'nether_travel\'.")
+        continue
+
+    else:
+      logging.debug(f"Skipping \'{save}\' for it is not completed.")
+      continue
+      
+
     if data is not None:
       data = pd.concat([data, df], axis=0, ignore_index=True)
     else:
