@@ -134,6 +134,7 @@ def read_record(record, old_names, new_names):
 # READ
 # ------
 
+resets = 0
 attempts = 0
 count = 0
 data = None
@@ -143,6 +144,18 @@ for instance in os.listdir("."):
     if not instance.startswith('Instance'):
         continue
     logging.info(f'Current folder: {instance}')
+
+    # Read the reset count of atum mod.
+    try:
+        with open(f'./{instance}/.minecraft/config/atum/atum.properties', 'r') as f:
+            contents = f.read()
+        # Extract ssgAttempts and rsgAttempts values from contents
+        ssg_attempts = int(contents.split('\n')[-4].split('=')[1])
+        rsg_attempts = int(contents.split('\n')[-3].split('=')[1])
+        resets += ssg_attempts + rsg_attempts
+    except Exception:
+        print('failed')
+        pass
 
     for save in os.listdir(f"./{instance}/.minecraft/saves"):
         path_info = f"/{instance}/{save}"
@@ -245,5 +258,29 @@ with open("stats_last_run.txt", "w") as f:
     f.write(str(float(current_time)))
     logging.info(f"Execute time: {datetime.datetime.now()}, {current_time}")
 
-logging.info(f"{attempts} runs are read. {count} runs are recorded.")
+logging.info(f"{attempts} runs are read. {count} runs are recorded. For atum, {resets} resets are found.")
 print(f"Congrats! {attempts} runs are read. {count} runs are recorded.")
+
+# There is a file: ./output/obs_display.txt
+# It contains the following lines:
+# Maple20 (He/Him)
+# RSG pb 26:49
+# FSG pb 21:43
+# Resets 21459
+# Runs 3604
+
+# Read contents of obs_display.txt
+os.chdir('output')
+with open('obs_display.txt', 'r') as f:
+    lines = f.readlines()
+    for i in range(len(lines)):
+        if 'Runs' in lines[i]:
+            runs = int(lines[i].split()[-1]) + attempts
+            lines[i] = f"Runs {runs}\n"
+        elif 'Resets' in lines[i]:
+            lines[i] = f"Resets {resets}\n"
+
+with open('obs_display.txt', 'w') as f:
+    f.writelines(lines)
+
+print("obs_display.txt updated.")

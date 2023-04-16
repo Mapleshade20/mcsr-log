@@ -31,3 +31,5 @@ It collects speedrunigt records of your completed runs, and output to a CSV file
   - Added various new configs.
   - Changed incomplete criteria to blind.
   - Now it uses your python folder as output dir, instead of MultiMC folder.
+- Version 1.2, 20230416.
+  - New feature: count resets and attempts, and output to obs_display.txt
