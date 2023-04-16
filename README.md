@@ -2,13 +2,13 @@
 
 ## Notes
 
-1. Only saves named by the mod 'atum' can be read.
+1. Requirement: mod atum, MultiMC.
 
-2. Please put this script in your 'MultiMC/instances' directory, and run the batchfile.
+2. You can run this script anywhere but please first check out `config` file and modify your MultiMC path.
 
 ## What does it do?
 
-It collects speedrunigt records of your completed runs, and output to a CSV file under MultiMC/instances.
+It collects speedrunigt records of your Any% runs, and return a CSV table. It can also update a reset-counting txt for your OBS display.
 
 ## Todos
 
