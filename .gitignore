@@ -1,4 +1,4 @@
 test.py
 *.log
-# /output
+/output
 stats_last_run.txt

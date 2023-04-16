@@ -8,7 +8,7 @@
 
 ## What does it do?
 
-It collects speedrunigt records of your Any% runs, and return a CSV table. It can also update a reset-counting txt for your OBS display.
+It collects speedrunigt records of your Any% runs, RSG or FSG, and return a CSV table. It can also update a reset-counting txt for your OBS display.
 
 ## Todos
 
@@ -27,9 +27,9 @@ It collects speedrunigt records of your Any% runs, and return a CSV table. It ca
 ## Update Log
 - Version 1.1, 20230416.
   - Rewrote delta calcu method.
-  - Now it can automatically remove identical records.
+  - Now it's able to automatically remove identical records.
   - Added various new configs.
   - Changed incomplete criteria to blind.
-  - Now it uses your python folder as output dir, instead of MultiMC folder.
+  - Now it **uses your python folder as output dir**, instead of MultiMC folder.
 - Version 1.2, 20230416.
   - New feature: count resets and attempts, and output to obs_display.txt
