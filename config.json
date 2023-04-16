@@ -1,4 +1,7 @@
-{"path":  "D:\\Program Files\\MultiMC\\instances",
+{"mc_dir":  "D:\\Program Files\\MultiMC\\instances",
  "read_incomplete": true,
- "ignore_lastrun": true,
- "version": "1.0"}
+ "log_level": "INFO",
+ "empty_bopping": true,
+ "no_blind_bopping": true,
+ "replace_old_csv": false,
+ "version": "1.1"}
