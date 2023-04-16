@@ -22,8 +22,8 @@ try:
     py_dir = os.getcwd()
     mc_dir = config['mc_dir']
     read_incomplete = config['read_incomplete']
-    #ignore_lastrun = config['ignore_lastrun']
-    ignore_lastrun = True
+    ignore_lastrun = config['ignore_lastrun']
+    #ignore_lastrun = True
     log_level = config['log_level']
     version = config['version']
     empty_bopping = config['empty_bopping']
@@ -134,6 +134,7 @@ def read_record(record, old_names, new_names):
 # READ
 # ------
 
+attempts = 0
 count = 0
 data = None
 
@@ -165,7 +166,7 @@ for instance in os.listdir("."):
                 shutil.rmtree(save_path)
                 logging.debug(f"Deleted empty save {path_info}.")
             continue
-
+        
         # Skip old saves
         if not ignore_lastrun:
             if not is_new_folder(save_path, last_run_time):
@@ -173,6 +174,7 @@ for instance in os.listdir("."):
         
         # Main read record module
         logging.info(f"{path_info} matches!")
+        attempts += 1
         df = read_record(record, old_names, new_names)
         if df is None:
             if read_incomplete:
@@ -243,4 +245,5 @@ with open("stats_last_run.txt", "w") as f:
     f.write(str(float(current_time)))
     logging.info(f"Execute time: {datetime.datetime.now()}, {current_time}")
 
-print(f"Congrats! {count} runs are recorded.")
+logging.info(f"{attempts} runs are read. {count} runs are recorded.")
+print(f"Congrats! {attempts} runs are read. {count} runs are recorded.")

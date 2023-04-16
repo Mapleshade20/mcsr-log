@@ -1,5 +1,6 @@
 {"mc_dir":  "D:\\Program Files\\MultiMC\\instances",
  "read_incomplete": true,
+ "ignore_lastrun": false,
  "log_level": "INFO",
  "empty_bopping": true,
  "no_blind_bopping": true,
