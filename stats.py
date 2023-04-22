@@ -1,4 +1,4 @@
-# Created by MapleShade20
+# Author: MapleShade20
 # Intance folders here should be named like: Instance 4
 
 import json
@@ -40,8 +40,7 @@ if os.path.exists('./output/stats_output.csv'):
         if f.readline().strip() != 'category,run_type,is_completed,final_igt_converted,date_converted,' + ','.join(new_names) + ',save_path,date,final_igt,final_rta':
             print('You have an outdated stats_output.csv. Please delete it. Exiting...')
             exit()
-else:
-    pass
+# [todo]: update the csv to match the latest version
 
 # Set up logging
 os.chdir(py_dir)
@@ -97,8 +96,8 @@ def convert_millis(millis):
     return result
 
 # Main record reader module
-def read_record(record, old_names, new_names):
-    # 'record': json.load() object, 'old_names': list, 'new_names': list
+def read_record(record):    # json.load() object
+    global old_names, new_names
     # Import record timelines
     df = pd.DataFrame(record["timelines"]).set_index("name").T
     df = df.drop(index='rta')
@@ -154,7 +153,7 @@ for instance in os.listdir("."):
         rsg_attempts = int(contents.split('\n')[-3].split('=')[1])
         resets += ssg_attempts + rsg_attempts
     except Exception:
-        print('failed')
+        print('Read Atum failed.')
         pass
 
     for save in os.listdir(f"./{instance}/.minecraft/saves"):
@@ -188,7 +187,7 @@ for instance in os.listdir("."):
         # Main read record module
         logging.info(f"{path_info} matches!")
         attempts += 1
-        df = read_record(record, old_names, new_names)
+        df = read_record(record)
         if df is None:
             if read_incomplete:
                 logging.debug(f"[INC] {path_info} skipped for no \'nether_travel\'.")
@@ -250,7 +249,7 @@ else:
     data.to_csv("stats_output.csv", mode='w', index=False, header=True)
 
 # ----------
-# TIME WRITE
+# TIME
 # ----------
 os.chdir(py_dir)
 current_time = datetime.datetime.now().timestamp()
@@ -261,8 +260,7 @@ with open("stats_last_run.txt", "w") as f:
 logging.info(f"{attempts} runs are read. {count} runs are recorded. For atum, {resets} resets are found.")
 print(f"Congrats! {attempts} runs are read. {count} runs are recorded.")
 
-# There is a file: ./output/obs_display.txt
-# It contains the following lines:
+# file: ./output/obs_display.txt
 # Maple20 (He/Him)
 # RSG pb 26:49
 # FSG pb 21:43
