@@ -1,2 +1,2 @@
-python stats.py
+poetry run python stats.py
 PAUSE

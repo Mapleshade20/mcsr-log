@@ -7,11 +7,7 @@ import pandas as pd
 import logging
 import datetime
 import shutil
-
-name_match = {'enter_nether':'enter_nether', 'enter_bastion':'goto_bastion',
-                            'enter_fortress':'bart_travel', 'nether_travel':'fight_blaze',
-                            'enter_stronghold':'eye_spy', 'enter_end':'locate_room',
-                            'kill_ender_dragon':'kill_dragon'}
+from const import name_match
 old_names = list(name_match.keys())
 new_names = list(name_match.values())
 
@@ -169,8 +165,12 @@ for instance in os.listdir("."):
             logging.warning(f'Cannot find record in \'{record_path}\'.')
             continue
         
-        with open(record_path, "r") as f:
-            record = json.load(f)
+        try:
+            with open(record_path, "r") as f:
+                record = json.load(f)
+        except Exception:
+            logging.error(f'Damaged record: \'{record_path}\'.')
+            continue
         
         # Skip empty saves, and do world bopping if enabled
         if record["timelines"] == []:
